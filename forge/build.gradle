@@ -1,0 +1,93 @@
+plugins {
+    id "com.github.johnrengelman.shadow" version "7.1.2"
+}
+
+architectury {
+    platformSetupLoomIde()
+    forge()
+}
+
+loom {
+    forge {
+        convertAccessWideners = true
+    }
+}
+
+configurations {
+    common
+    shadowCommon
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentForge.extendsFrom common
+}
+
+dependencies {
+    forge "net.minecraftforge:forge:${rootProject.forge_version}"
+    modApi "me.shedaniel:architectury-forge:${rootProject.architectury_version}"
+
+    common(project(path: ":common", configuration: "namedElements")) { transitive false }
+    shadowCommon(project(path: ":common", configuration: "transformProductionForge")) { transitive = false }
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mod_id", rootProject.mod_id
+    inputs.property "mod_name", rootProject.mod_name
+    inputs.property "mod_license", rootProject.mod_license
+    inputs.property "mod_authors", rootProject.mod_authors
+    inputs.property "mod_description", rootProject.mod_description
+    inputs.property "forge_version", rootProject.forge_version
+    inputs.property "architectury_version", rootProject.architectury_version
+    inputs.property "minecraft_version", rootProject.minecraft_version
+
+    filesMatching("META-INF/mods.toml") {
+        expand(
+                version: project.version,
+                mod_id: rootProject.mod_id,
+                mod_name: rootProject.mod_name,
+                mod_license: rootProject.mod_license,
+                mod_authors: rootProject.mod_authors,
+                mod_description: rootProject.mod_description,
+                forge_version: rootProject.forge_version,
+                architectury_version: rootProject.architectury_version,
+                minecraft_version: rootProject.minecraft_version
+        )
+    }
+}
+
+shadowJar {
+    exclude "fabric.mod.json"
+    exclude "architectury.common.json"
+
+    configurations = [project.configurations.shadowCommon]
+    archiveClassifier = "dev-shadow"
+}
+
+remapJar {
+    input.set shadowJar.archiveFile
+    dependsOn shadowJar
+}
+
+sourcesJar {
+    def commonSources = project(":common").sourcesJar
+    dependsOn commonSources
+    from commonSources.archiveFile.map { zipTree(it) }
+}
+
+components.java {
+    withVariantsFromConfiguration(project.configurations.shadowRuntimeElements) {
+        skip()
+    }
+}
+
+publishing {
+    publications {
+        mavenForge(MavenPublication) {
+            artifactId = rootProject.archives_base_name + "-" + project.name
+            from components.java
+        }
+    }
+
+    repositories {
+    }
+}

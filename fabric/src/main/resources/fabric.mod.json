@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "jevents",
+  "version": "${version}",
+  "name": "jEvents",
+  "description": "Cross-loader event administration mod for organized recordings and live events.",
+  "authors": [
+    "john-fries"
+  ],
+  "license": "All Rights Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "org.johnfries.jevents.fabric.JEventsFabric"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.14.23",
+    "fabric-api": "*",
+    "minecraft": "1.16.5",
+    "architectury": ">=1.32.68"
+  }
+}
