@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "mc*-v*"
+      - "mc/*-v*"
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Build Forge and Fabric
+        run: ./gradlew --no-daemon :forge:build :fabric:build
+
+      - name: Collect Release Artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p release-artifacts
+
+          forge_jar="$(find forge/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-dev-shadow.jar' ! -name '*-sources.jar' | head -n1)"
+          fabric_jar="$(find fabric/build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-dev-shadow.jar' ! -name '*-sources.jar' | head -n1)"
+
+          if [[ -z "${forge_jar}" ]]; then
+            echo "No Forge release jar found."
+            exit 1
+          fi
+
+          if [[ -z "${fabric_jar}" ]]; then
+            echo "No Fabric release jar found."
+            exit 1
+          fi
+
+          forge_name="$(basename "${forge_jar}")"
+          fabric_name="$(basename "${fabric_jar}")"
+
+          cp "${forge_jar}" "release-artifacts/${forge_name%.jar}-forge.jar"
+          cp "${fabric_jar}" "release-artifacts/${fabric_name%.jar}-fabric.jar"
+
+          ls -lah release-artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release-artifacts/*
+          fail_on_unmatched_files: true
